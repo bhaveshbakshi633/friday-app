@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Friday — Speech Test</title>
+  <style>
+    body { font-family: system-ui; background: #1a1a2e; color: #fff; padding: 20px; }
+    #log { white-space: pre-wrap; font-size: 14px; margin-top: 20px; background: #000; padding: 12px; border-radius: 8px; min-height: 200px; }
+    button { padding: 16px 32px; font-size: 18px; border-radius: 12px; border: none; margin: 8px; cursor: pointer; }
+    #start { background: #4361ee; color: #fff; }
+    #stop { background: #ef476f; color: #fff; }
+    .heard { color: #0f0; }
+    .info { color: #888; }
+    .error { color: #f00; }
+  </style>
+</head>
+<body>
+  <h2>Speech Recognition Test</h2>
+  <p>Tap Start, say "Friday hello". Watch the log below.</p>
+  <button id="start">▶ Start</button>
+  <button id="stop">⏹ Stop</button>
+  <div id="log"></div>
+
+  <script>
+    const log = document.getElementById('log');
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    function addLog(msg, cls) {
+      const line = document.createElement('div');
+      line.className = cls || '';
+      line.textContent = new Date().toLocaleTimeString() + ' ' + msg;
+      log.prepend(line);
+    }
+
+    if (!SR) {
+      addLog('SpeechRecognition NOT SUPPORTED in this browser', 'error');
+    } else {
+      addLog('SpeechRecognition available', 'info');
+    }
+
+    let running = false;
+    let rec = null;
+
+    function startSession() {
+      if (!SR) return;
+      rec = new SR();
+      rec.continuous = false;
+      rec.interimResults = true;
+      rec.lang = 'en-IN';
+
+      rec.onstart = () => addLog('🎤 session started', 'info');
+
+      rec.onresult = (event) => {
+        let text = '';
+        let isFinal = false;
+        for (let i = 0; i < event.results.length; i++) {
+          text += event.results[i][0].transcript;
+          if (event.results[i].isFinal) isFinal = true;
+        }
+        const lower = text.toLowerCase();
+        const hasFriday = lower.includes('friday');
+        addLog((isFinal ? '✅' : '...') + ' "' + text + '"' + (hasFriday ? ' 🎯 FRIDAY DETECTED!' : ''), 'heard');
+      };
+
+      rec.onend = () => {
+        addLog('session ended', 'info');
+        if (running) {
+          setTimeout(startSession, 100);
+        }
+      };
+
+      rec.onerror = (e) => {
+        addLog('error: ' + e.error, 'error');
+        if (running && (e.error === 'no-speech' || e.error === 'aborted')) {
+          setTimeout(startSession, 200);
+        }
+      };
+
+      try {
+        rec.start();
+      } catch(e) {
+        addLog('start failed: ' + e, 'error');
+        setTimeout(startSession, 300);
+      }
+    }
+
+    document.getElementById('start').onclick = () => {
+      running = true;
+      addLog('=== STARTING ===', 'info');
+      startSession();
+    };
+
+    document.getElementById('stop').onclick = () => {
+      running = false;
+      if (rec) try { rec.stop(); } catch(e) {}
+      addLog('=== STOPPED ===', 'info');
+    };
+  </script>
+</body>
+</html>
