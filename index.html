@@ -6,94 +6,129 @@
   <title>Friday — Speech Test</title>
   <style>
     body { font-family: system-ui; background: #1a1a2e; color: #fff; padding: 20px; }
-    #log { white-space: pre-wrap; font-size: 14px; margin-top: 20px; background: #000; padding: 12px; border-radius: 8px; min-height: 200px; }
-    button { padding: 16px 32px; font-size: 18px; border-radius: 12px; border: none; margin: 8px; cursor: pointer; }
+    #log { white-space: pre-wrap; font-size: 13px; margin-top: 16px; background: #000; padding: 12px; border-radius: 8px; min-height: 300px; max-height: 60vh; overflow-y: auto; }
+    button { padding: 14px 28px; font-size: 16px; border-radius: 12px; border: none; margin: 4px; cursor: pointer; }
     #start { background: #4361ee; color: #fff; }
     #stop { background: #ef476f; color: #fff; }
+    select { padding: 10px; font-size: 14px; border-radius: 8px; background: #16213e; color: #fff; border: 1px solid #333; }
     .heard { color: #0f0; }
+    .wake { color: #ff0; font-weight: bold; }
     .info { color: #888; }
-    .error { color: #f00; }
+    .error { color: #f66; }
   </style>
 </head>
 <body>
-  <h2>Speech Recognition Test</h2>
-  <p>Tap Start, say "Friday hello". Watch the log below.</p>
-  <button id="start">▶ Start</button>
-  <button id="stop">⏹ Stop</button>
+  <h2>🎤 Speech Test v2</h2>
+  <div>
+    <select id="lang">
+      <option value="en-US">en-US</option>
+      <option value="en-IN">en-IN</option>
+      <option value="en-GB">en-GB</option>
+      <option value="en">en</option>
+    </select>
+    <button id="start">▶ Start</button>
+    <button id="stop">⏹ Stop</button>
+  </div>
   <div id="log"></div>
 
   <script>
-    const log = document.getElementById('log');
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    // Nuke old service workers + cache
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        regs.forEach(function(r) { r.unregister(); });
+      });
+      caches.keys().then(function(keys) {
+        keys.forEach(function(k) { caches.delete(k); });
+      });
+    }
+
+    var log = document.getElementById('log');
+    var langSelect = document.getElementById('lang');
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     function addLog(msg, cls) {
-      const line = document.createElement('div');
+      var line = document.createElement('div');
       line.className = cls || '';
       line.textContent = new Date().toLocaleTimeString() + ' ' + msg;
       log.prepend(line);
     }
 
     if (!SR) {
-      addLog('SpeechRecognition NOT SUPPORTED in this browser', 'error');
+      addLog('SpeechRecognition NOT SUPPORTED', 'error');
     } else {
-      addLog('SpeechRecognition available', 'info');
+      addLog('Ready. Pick language, tap Start, say "Friday hello"', 'info');
     }
 
-    let running = false;
-    let rec = null;
+    var running = false;
+    var sessionNum = 0;
+    var busy = false;
 
-    function startSession() {
-      if (!SR) return;
-      rec = new SR();
+    function listen() {
+      if (!SR || !running || busy) return;
+      busy = true;
+
+      var rec = new SR();
       rec.continuous = false;
       rec.interimResults = true;
-      rec.lang = 'en-IN';
+      rec.lang = langSelect.value;
 
-      rec.onstart = () => addLog('🎤 session started', 'info');
-
-      rec.onresult = (event) => {
-        let text = '';
-        let isFinal = false;
-        for (let i = 0; i < event.results.length; i++) {
-          text += event.results[i][0].transcript;
-          if (event.results[i].isFinal) isFinal = true;
-        }
-        const lower = text.toLowerCase();
-        const hasFriday = lower.includes('friday');
-        addLog((isFinal ? '✅' : '...') + ' "' + text + '"' + (hasFriday ? ' 🎯 FRIDAY DETECTED!' : ''), 'heard');
+      rec.onstart = function() {
+        sessionNum++;
+        busy = false;
+        addLog('#' + sessionNum + ' listening [' + langSelect.value + ']', 'info');
       };
 
-      rec.onend = () => {
-        addLog('session ended', 'info');
-        if (running) {
-          setTimeout(startSession, 100);
+      rec.onresult = function(event) {
+        for (var i = event.resultIndex; i < event.results.length; i++) {
+          var text = event.results[i][0].transcript;
+          var isFinal = event.results[i].isFinal;
+          var lower = text.toLowerCase();
+          var hasFriday = lower.indexOf('friday') >= 0;
+
+          if (hasFriday) {
+            addLog((isFinal ? 'FINAL' : '...') + ': "' + text + '" 🎯 FRIDAY!', 'wake');
+          } else {
+            addLog((isFinal ? 'FINAL' : '...') + ': "' + text + '"', 'heard');
+          }
         }
       };
 
-      rec.onerror = (e) => {
+      rec.onend = function() {
+        addLog('#' + sessionNum + ' ended', 'info');
+        busy = false;
+        // 500ms gap — Safari cleanup time
+        if (running) setTimeout(listen, 500);
+      };
+
+      rec.onerror = function(e) {
+        busy = false;
+        if (e.error === 'aborted') return; // onend handles restart
+        if (e.error === 'no-speech') {
+          addLog('silence, retrying...', 'info');
+          return;
+        }
         addLog('error: ' + e.error, 'error');
-        if (running && (e.error === 'no-speech' || e.error === 'aborted')) {
-          setTimeout(startSession, 200);
-        }
       };
 
       try {
         rec.start();
       } catch(e) {
-        addLog('start failed: ' + e, 'error');
-        setTimeout(startSession, 300);
+        addLog('start fail: ' + e.message, 'error');
+        busy = false;
+        if (running) setTimeout(listen, 1000);
       }
     }
 
-    document.getElementById('start').onclick = () => {
+    document.getElementById('start').onclick = function() {
       running = true;
-      addLog('=== STARTING ===', 'info');
-      startSession();
+      sessionNum = 0;
+      busy = false;
+      addLog('=== STARTED ===', 'info');
+      listen();
     };
 
-    document.getElementById('stop').onclick = () => {
+    document.getElementById('stop').onclick = function() {
       running = false;
-      if (rec) try { rec.stop(); } catch(e) {}
       addLog('=== STOPPED ===', 'info');
     };
   </script>
