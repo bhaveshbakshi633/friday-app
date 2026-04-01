@@ -88,5 +88,13 @@
     </div>
   </div>
 
+  <script>
+    // Force SW update — no stale cache, no ?v= needed
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(r => r.update());
+      });
+    }
+  </script>
 </body>
 </html>
