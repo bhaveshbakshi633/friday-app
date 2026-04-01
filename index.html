@@ -1,405 +1,447 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-  <meta name="theme-color" content="#1a1a2e">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>Friday</title>
-  <script src="https://unpkg.com/dexie@4.0.11/dist/dexie.min.js"></script>
-  <style>
-    :root { --bg:#1a1a2e; --card:#16213e; --accent:#4361ee; --green:#06d6a0; --red:#ef476f; --text:#e0e0e0; --dim:#8892a4; --muted:#4a5568; }
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:-apple-system,system-ui,sans-serif; background:var(--bg); color:var(--text); height:100dvh; overflow:hidden; -webkit-user-select:none; }
-    #app { display:flex; flex-direction:column; height:100dvh; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0a0a1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Friday</title>
+<script src="https://unpkg.com/dexie@4.0.11/dist/dexie.min.js"></script>
+<style>
+:root{--bg:#0a0a1a;--card:#141428;--accent:#6366f1;--green:#10b981;--red:#ef4444;--text:#f0f0f0;--dim:#9ca3af;--muted:#4b5563;--border:rgba(255,255,255,.06)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,system-ui,sans-serif;background:var(--bg);color:var(--text);height:100dvh;overflow:hidden}
+#app{display:flex;flex-direction:column;height:100dvh}
 
-    /* Tabs */
-    #tabs { display:flex; position:fixed; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid rgba(255,255,255,.05); padding-bottom:env(safe-area-inset-bottom); z-index:50; }
-    .tab { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 0; background:none; border:none; color:var(--muted); font-size:10px; cursor:pointer; }
-    .tab.on { color:var(--accent); }
+/* Nav */
+nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom);z-index:50}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0;background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer;transition:.2s}
+.tab.on{color:var(--accent)}
+.tab span:first-child{font-size:18px}
 
-    /* Content */
-    #content { flex:1; overflow-y:auto; padding:16px 16px 90px; -webkit-overflow-scrolling:touch; }
-    .page { display:none; } .page.on { display:block; }
-    h1 { font-size:28px; font-weight:700; margin-bottom:16px; }
+/* Content */
+main{flex:1;overflow-y:auto;padding:20px 16px 90px;-webkit-overflow-scrolling:touch}
+.pg{display:none}.pg.on{display:block}
+h1{font-size:26px;font-weight:700;margin-bottom:16px}
 
-    /* Cards */
-    .card { background:var(--card); border-radius:12px; padding:14px 16px; margin-bottom:10px; }
-    .meta { font-size:12px; color:var(--dim); margin-top:6px; display:flex; gap:8px; align-items:center; }
-    .empty { text-align:center; padding:60px 20px; color:var(--dim); }
+/* Cards */
+.c{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;transition:transform .15s}
+.c:active{transform:scale(.98)}
+.meta{font-size:12px;color:var(--dim);margin-top:8px;display:flex;gap:8px;align-items:center}
 
-    /* Input bar */
-    .bar { display:flex; gap:8px; margin-bottom:16px; }
-    .bar input,.bar select { flex:1; padding:12px; background:#0f3460; border:1px solid rgba(255,255,255,.1); border-radius:12px; color:var(--text); font-size:15px; outline:none; }
-    .bar button { padding:12px 20px; background:var(--accent); color:#fff; border:none; border-radius:12px; font-size:15px; font-weight:600; cursor:pointer; }
+/* Input */
+.bar{display:flex;gap:8px;margin-bottom:16px}
+.bar input,.bar select{flex:1;padding:12px 14px;background:#1a1a30;border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;outline:none}
+.bar input:focus{border-color:var(--accent)}
+.bar button{padding:12px 18px;background:var(--accent);color:#fff;border:none;border-radius:12px;font-weight:600;cursor:pointer}
+.empty{text-align:center;padding:60px 20px;color:var(--dim)}
 
-    /* Task row */
-    .trow { display:flex; align-items:center; gap:12px; }
-    .tcheck { width:24px; height:24px; border-radius:50%; border:2px solid var(--muted); background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--bg); font-size:14px; }
-    .tcheck.done { border-color:var(--green); background:var(--green); }
-    .done-text { text-decoration:line-through; color:var(--dim); }
+/* Tasks */
+.trow{display:flex;align-items:center;gap:12px}
+.tck{width:22px;height:22px;border-radius:50%;border:2px solid var(--muted);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--bg);flex-shrink:0;transition:.2s}
+.tck.d{border-color:var(--green);background:var(--green)}
+.dt{text-decoration:line-through;color:var(--dim)}
+.del{background:none;border:none;cursor:pointer;font-size:13px;margin-left:auto;opacity:.5}
 
-    /* Delete btn */
-    .del { background:none; border:none; cursor:pointer; font-size:14px; margin-left:auto; }
+/* Settings */
+.sg{background:var(--card);border:1px solid var(--border);border-radius:14px;margin-bottom:16px}
+.sr{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;font-size:14px}
+.sr+.sr{border-top:1px solid var(--border)}
+.sv{color:var(--dim);font-size:13px;max-width:55%;text-align:right;word-break:break-all}
+.sl{font-size:12px;font-weight:600;color:var(--dim);padding:10px 16px 4px;text-transform:uppercase;letter-spacing:.5px}
+.sr input{background:#1a1a30;border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;width:60%;text-align:right;outline:none}
 
-    /* Setting rows */
-    .sgroup { background:var(--card); border-radius:12px; margin-bottom:16px; }
-    .srow { display:flex; justify-content:space-between; padding:14px 16px; font-size:15px; }
-    .srow+.srow { border-top:1px solid rgba(255,255,255,.05); }
-    .sval { color:var(--dim); font-size:14px; }
-    .slabel { font-size:13px; font-weight:600; color:var(--dim); padding:8px 16px 4px; }
+/* Mic */
+#mic{position:fixed;bottom:calc(70px + env(safe-area-inset-bottom));right:20px;width:58px;height:58px;border-radius:50%;background:var(--accent);border:none;color:#fff;cursor:pointer;z-index:60;box-shadow:0 4px 24px rgba(99,102,241,.4);font-size:22px;transition:.3s}
+#mic.on{background:var(--green);box-shadow:0 4px 24px rgba(16,185,129,.5);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 4px 24px rgba(16,185,129,.4)}50%{box-shadow:0 4px 40px rgba(16,185,129,.7)}}
 
-    /* Mic button */
-    #mic { position:fixed; bottom:calc(70px + env(safe-area-inset-bottom)); right:20px; width:56px; height:56px; border-radius:50%; background:var(--accent); border:none; color:#fff; cursor:pointer; z-index:60; box-shadow:0 4px 20px rgba(67,97,238,.3); display:flex; align-items:center; justify-content:center; font-size:24px; }
-    #mic.on { background:var(--green); animation:pulse 1.5s infinite; }
-    @keyframes pulse { 0%,100%{box-shadow:0 4px 20px rgba(6,214,160,.3)} 50%{box-shadow:0 4px 40px rgba(6,214,160,.6)} }
+/* Overlay */
+#ov{position:fixed;inset:0;z-index:100;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+#ov.on{display:flex}
+#ov .bg{position:absolute;inset:0;background:rgba(5,5,15,.94);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px)}
+#ov .in{position:relative;display:flex;flex-direction:column;align-items:center;gap:16px;padding:40px 24px;width:100%}
+#ov-status{font-size:20px;font-weight:600;letter-spacing:.3px}
+#ov-orb{width:140px;height:140px;border-radius:50%;background:radial-gradient(circle at 40% 40%,var(--accent),#7c3aed,#4f46e5);animation:breathe 2.5s ease-in-out infinite;box-shadow:0 0 60px rgba(99,102,241,.3)}
+@keyframes breathe{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.06);opacity:1}}
+#ov.thinking #ov-orb{animation:think .8s ease-in-out infinite;background:radial-gradient(circle,#7c3aed,#6d28d9)}
+@keyframes think{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+#ov.speaking #ov-orb{background:radial-gradient(circle,var(--green),#059669);animation:speak 1.2s ease-in-out infinite}
+@keyframes speak{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+#ov-text{font-size:15px;min-height:20px;opacity:.9;max-width:85%;color:var(--text)}
+#ov-resp{font-size:14px;color:var(--dim);min-height:18px;max-width:85%}
+#ov-hint{font-size:11px;color:var(--muted);margin-top:8px}
+#ov-stop{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.08);border:none;color:var(--dim);font-size:18px;cursor:pointer;margin-top:16px}
 
-    /* Overlay */
-    #overlay { position:fixed; inset:0; z-index:100; display:none; }
-    #overlay.on { display:flex; }
-    #overlay .bg { position:absolute; inset:0; background:rgba(10,10,20,.92); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); }
-    #overlay .inner { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; padding:40px 24px; text-align:center; gap:20px; }
-    #ov-status { font-size:22px; font-weight:600; }
-    #ov-orb { width:120px; height:120px; border-radius:50%; background:radial-gradient(circle,var(--accent),#7209b7); opacity:.7; animation:breathe 2s ease-in-out infinite; }
-    @keyframes breathe { 0%,100%{transform:scale(1);opacity:.7} 50%{transform:scale(1.08);opacity:.9} }
-    #ov-text { font-size:16px; min-height:24px; opacity:.9; max-width:80%; }
-    #ov-resp { font-size:14px; color:var(--dim); min-height:20px; max-width:80%; }
-    #ov-hint { font-size:12px; color:var(--muted); }
-    #ov-stop { width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.1); border:none; color:var(--dim); font-size:18px; cursor:pointer; margin-top:20px; }
-  </style>
+/* Conversation bubbles in overlay */
+#ov-chat{max-height:30vh;overflow-y:auto;width:85%;display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.bubble{padding:10px 14px;border-radius:16px;font-size:14px;max-width:85%;animation:fadeIn .3s}
+.bubble.user{background:var(--accent);align-self:flex-end;border-bottom-right-radius:4px}
+.bubble.fri{background:var(--card);border:1px solid var(--border);align-self:flex-start;border-bottom-left-radius:4px;color:var(--dim)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+</style>
 </head>
 <body>
 <div id="app">
-  <nav id="tabs">
-    <button class="tab on" onclick="showTab('notes')">📝<span>Notes</span></button>
-    <button class="tab" onclick="showTab('tasks')">✅<span>Tasks</span></button>
-    <button class="tab" onclick="showTab('reminders')">🔔<span>Reminders</span></button>
-    <button class="tab" onclick="showTab('settings')">⚙️<span>Settings</span></button>
-  </nav>
-
-  <main id="content">
-    <div id="p-notes" class="page on"></div>
-    <div id="p-tasks" class="page"></div>
-    <div id="p-reminders" class="page"></div>
-    <div id="p-settings" class="page"></div>
-  </main>
-
-  <button id="mic" onclick="toggleMic()">🎤</button>
-
-  <div id="overlay">
-    <div class="bg"></div>
-    <div class="inner">
-      <p id="ov-status">Listening...</p>
-      <div id="ov-orb"></div>
-      <p id="ov-text"></p>
-      <p id="ov-resp"></p>
-      <p id="ov-hint">Say "Friday" to start</p>
-      <button id="ov-stop" onclick="stopVoice()">✕</button>
-    </div>
-  </div>
+<nav>
+<button class="tab on" onclick="showTab('notes')"><span>📝</span><span>Notes</span></button>
+<button class="tab" onclick="showTab('tasks')"><span>✅</span><span>Tasks</span></button>
+<button class="tab" onclick="showTab('reminders')"><span>🔔</span><span>Reminders</span></button>
+<button class="tab" onclick="showTab('settings')"><span>⚙️</span><span>Settings</span></button>
+</nav>
+<main id="content">
+<div id="p-notes" class="pg on"></div>
+<div id="p-tasks" class="pg"></div>
+<div id="p-reminders" class="pg"></div>
+<div id="p-settings" class="pg"></div>
+</main>
+<button id="mic" onclick="toggleMic()">🎤</button>
+<div id="ov">
+<div class="bg"></div>
+<div class="in">
+<p id="ov-status">Listening...</p>
+<div id="ov-orb"></div>
+<p id="ov-text"></p>
+<div id="ov-chat"></div>
+<p id="ov-resp"></p>
+<p id="ov-hint">Say "Friday" to start</p>
+<button id="ov-stop" onclick="stopVoice()">✕</button>
+</div>
+</div>
 </div>
 
 <script>
 // ─── Nuke old SW ───
-if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(r=>r.forEach(x=>x.unregister()));if(window.caches)caches.keys().then(k=>k.forEach(x=>caches.delete(x)))}
+if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister()})});if(window.caches)caches.keys().then(function(k){k.forEach(function(x){caches.delete(x)})})}
 
 // ─── DB ───
-var db = new Dexie('friday');
-db.version(1).stores({ notes:'++id,createdAt', tasks:'++id,status,createdAt', reminders:'++id,remindAt,isSent' });
+var db=new Dexie('friday');
+db.version(1).stores({notes:'++id,createdAt',tasks:'++id,status,createdAt',reminders:'++id,remindAt,isSent'});
+
+// ─── Config ───
+function getKey(){return localStorage.getItem('friday_groq_key')||''}
+function setKey(k){localStorage.setItem('friday_groq_key',k)}
+function getVoice(){return localStorage.getItem('friday_voice')||'en-US-AriaNeural'}
+function setVoice(v){localStorage.setItem('friday_voice',v)}
 
 // ─── Tabs ───
-var currentTab = 'notes';
-function showTab(t) {
-  currentTab = t;
+var curTab='notes';
+function showTab(t){
+  curTab=t;
   document.querySelectorAll('.tab').forEach(function(b,i){b.className='tab'+((['notes','tasks','reminders','settings'][i]===t)?' on':'')});
-  document.querySelectorAll('.page').forEach(function(p){p.className='page'});
-  document.getElementById('p-'+t).className='page on';
+  document.querySelectorAll('.pg').forEach(function(p){p.className='pg'});
+  document.getElementById('p-'+t).className='pg on';
   render();
 }
 
 // ─── Render ───
-async function render() {
-  if(currentTab==='notes') await renderNotes();
-  if(currentTab==='tasks') await renderTasks();
-  if(currentTab==='reminders') await renderReminders();
-  if(currentTab==='settings') renderSettings();
+async function render(){
+  if(curTab==='notes')await renderNotes();
+  if(curTab==='tasks')await renderTasks();
+  if(curTab==='reminders')await renderReminders();
+  if(curTab==='settings')renderSettings();
 }
-
-async function renderNotes() {
-  var notes = await db.notes.orderBy('createdAt').reverse().limit(50).toArray();
-  var el = document.getElementById('p-notes');
-  var h = '<h1>Notes</h1><div class="bar"><input id="ni" placeholder="Quick note..."><button onclick="addNote()">+</button></div>';
-  if(!notes.length) h += '<div class="empty">📝<br><b>No Notes Yet</b><br>Say "Friday, note down..." or type above</div>';
-  notes.forEach(function(n){
-    h += '<div class="card"><div>'+esc(n.content)+'</div><div class="meta"><span>'+(n.source==='voice'?'🎤':'📝')+'</span><span>'+ago(n.createdAt)+'</span><button class="del" onclick="delNote('+n.id+')">🗑️</button></div></div>';
-  });
-  el.innerHTML = h;
+async function renderNotes(){
+  var n=await db.notes.orderBy('createdAt').reverse().limit(50).toArray();
+  var h='<h1>Notes</h1><div class="bar"><input id="ni" placeholder="Quick note..."><button onclick="addNote()">+</button></div>';
+  if(!n.length)h+='<div class="empty">📝<br><b>No Notes Yet</b><br><small>Say "Friday, note down..." or type above</small></div>';
+  n.forEach(function(x){h+='<div class="c"><div>'+esc(x.content)+'</div><div class="meta"><span>'+(x.source==='voice'?'🎤':'📝')+'</span><span>'+ago(x.createdAt)+'</span><button class="del" onclick="delNote('+x.id+')">🗑</button></div></div>'});
+  document.getElementById('p-notes').innerHTML=h;
 }
-
-async function renderTasks() {
-  var tasks = await db.tasks.where('status').anyOf('pending','in_progress').reverse().sortBy('createdAt');
-  var done = await db.tasks.where('status').equals('done').reverse().sortBy('createdAt');
-  var el = document.getElementById('p-tasks');
-  var h = '<h1>Tasks</h1><div class="bar"><input id="ti" placeholder="New task..."><select id="tp"><option value="medium">Med</option><option value="low">Low</option><option value="high">High</option><option value="urgent">🔴</option></select><button onclick="addTask()">+</button></div>';
-  if(!tasks.length&&!done.length) h += '<div class="empty">✅<br><b>No Tasks</b><br>Say "Friday, add task..." or type above</div>';
-  tasks.forEach(function(t){ h += taskCard(t); });
-  if(done.length) { h += '<details style="margin-top:16px"><summary style="color:var(--dim);cursor:pointer">Done ('+done.length+')</summary>'; done.slice(0,10).forEach(function(t){ h += taskCard(t); }); h += '</details>'; }
-  el.innerHTML = h;
+async function renderTasks(){
+  var t=await db.tasks.where('status').anyOf('pending','in_progress').reverse().sortBy('createdAt');
+  var d=await db.tasks.where('status').equals('done').reverse().sortBy('createdAt');
+  var dots={low:'🟢',medium:'🟡',high:'🟠',urgent:'🔴'};
+  var h='<h1>Tasks</h1><div class="bar"><input id="ti" placeholder="New task..."><select id="tp"><option value="medium">Med</option><option value="low">Low</option><option value="high">High</option><option value="urgent">🔴</option></select><button onclick="addTask()">+</button></div>';
+  if(!t.length&&!d.length)h+='<div class="empty">✅<br><b>All Clear</b><br><small>Say "Friday, add task..." or type above</small></div>';
+  t.forEach(function(x){h+='<div class="c"><div class="trow"><button class="tck" onclick="togTask('+x.id+')"></button><div><div>'+esc(x.title)+'</div><div class="meta">'+(dots[x.priority]||'')+'<span>'+x.priority+'</span></div></div><button class="del" onclick="delTask('+x.id+')">🗑</button></div></div>'});
+  if(d.length){h+='<details style="margin-top:16px"><summary style="color:var(--dim);cursor:pointer;padding:8px 0">Done ('+d.length+')</summary>';d.slice(0,10).forEach(function(x){h+='<div class="c"><div class="trow"><button class="tck d" onclick="togTask('+x.id+')">✓</button><div class="dt">'+esc(x.title)+'</div><button class="del" onclick="delTask('+x.id+')">🗑</button></div></div>'});h+='</details>'}
+  document.getElementById('p-tasks').innerHTML=h;
 }
-
-function taskCard(t) {
-  var d = t.status==='done';
-  var dots = {low:'🟢',medium:'🟡',high:'🟠',urgent:'🔴'};
-  return '<div class="card"><div class="trow"><button class="tcheck'+(d?' done':'')+'" onclick="togTask('+t.id+')">'+(d?'✓':'')+'</button><div><div class="'+(d?'done-text':'')+'">'+esc(t.title)+'</div><div class="meta">'+(dots[t.priority]||'')+'<span>'+t.priority+'</span></div></div><button class="del" onclick="delTask('+t.id+')">🗑️</button></div></div>';
+async function renderReminders(){
+  var now=new Date(),r=await db.reminders.where('isSent').equals(0).sortBy('remindAt');
+  var h='<h1>Reminders</h1><div class="bar"><input id="ri" placeholder="Remind me to..."><input id="rt" type="datetime-local" value="'+defTime()+'"><button onclick="addReminder()">+</button></div>';
+  if(!r.length)h+='<div class="empty">🔔<br><b>No Reminders</b><br><small>Say "Friday, remind me..." or add above</small></div>';
+  r.forEach(function(x){var ov=new Date(x.remindAt)<=now;h+='<div class="c"><div>'+esc(x.title)+'</div><div class="meta"><span style="color:'+(ov?'var(--red)':'var(--dim)')+'">🔔 '+relTime(x.remindAt)+'</span><button class="del" onclick="delReminder('+x.id+')">🗑</button></div></div>'});
+  document.getElementById('p-reminders').innerHTML=h;
 }
-
-async function renderReminders() {
-  var now = new Date();
-  var rems = await db.reminders.where('isSent').equals(0).sortBy('remindAt');
-  var el = document.getElementById('p-reminders');
-  var h = '<h1>Reminders</h1><div class="bar"><input id="ri" placeholder="Remind me to..."><input id="rt" type="datetime-local" value="'+defTime()+'"><button onclick="addReminder()">+</button></div>';
-  if(!rems.length) h += '<div class="empty">🔔<br><b>No Reminders</b><br>Say "Friday, remind me..." or add above</div>';
-  rems.forEach(function(r){
-    var over = new Date(r.remindAt) <= now;
-    h += '<div class="card"><div>'+esc(r.title)+'</div><div class="meta"><span style="color:'+(over?'var(--red)':'var(--dim)')+'">🔔 '+relTime(r.remindAt)+'</span><button class="del" onclick="delReminder('+r.id+')">🗑️</button></div></div>';
-  });
-  el.innerHTML = h;
-}
-
-function renderSettings() {
-  document.getElementById('p-settings').innerHTML = '<h1>Settings</h1><p class="slabel">VOICE</p><div class="sgroup"><div class="srow"><span>Wake Word</span><span class="sval">"Friday"</span></div><div class="srow"><span>STT</span><span class="sval">On-device</span></div><div class="srow"><span>TTS</span><span class="sval">On-device</span></div><div class="srow"><span>Storage</span><span class="sval">On-device (IndexedDB)</span></div></div><p class="slabel">COMMANDS</p><div class="sgroup"><div class="srow" style="flex-direction:column;gap:8px;font-size:13px;color:var(--dim)"><div>📝 "Friday, note down meeting at 3pm"</div><div>✅ "Friday, add task buy groceries"</div><div>🔔 "Friday, remind me in 2 hours to call mom"</div><div>📋 "Friday, show my tasks"</div><div>🔍 "Friday, search notes about project"</div></div></div>';
+function renderSettings(){
+  var k=getKey(),v=getVoice();
+  document.getElementById('p-settings').innerHTML='<h1>Settings</h1><p class="sl">API</p><div class="sg"><div class="sr"><span>Groq API Key</span><input id="sk" type="password" value="'+esc(k)+'" placeholder="gsk_..." onchange="setKey(this.value)"></div></div><p class="sl">Voice</p><div class="sg"><div class="sr"><span>TTS Voice</span><select id="sv" onchange="setVoice(this.value)" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:13px"><option value="en-US-AriaNeural"'+(v==='en-US-AriaNeural'?' selected':'')+'>Aria (US Female)</option><option value="en-US-GuyNeural"'+(v==='en-US-GuyNeural'?' selected':'')+'>Guy (US Male)</option><option value="en-IN-NeerjaNeural"'+(v==='en-IN-NeerjaNeural'?' selected':'')+'>Neerja (IN Female)</option><option value="en-IN-PrabhatNeural"'+(v==='en-IN-PrabhatNeural'?' selected':'')+'>Prabhat (IN Male)</option></select></div></div><p class="sl">Stack</p><div class="sg"><div class="sr"><span>STT</span><span class="sv">Web Speech API (free)</span></div><div class="sr"><span>LLM</span><span class="sv">Groq Llama 3.3 70B</span></div><div class="sr"><span>TTS</span><span class="sv">Edge TTS (free)</span></div><div class="sr"><span>Tools</span><span class="sv">Groq function calling</span></div><div class="sr"><span>Storage</span><span class="sv">IndexedDB (on-device)</span></div></div><p class="sl">Commands</p><div class="sg"><div class="sr" style="flex-direction:column;align-items:flex-start;gap:6px;font-size:13px;color:var(--dim)"><div>📝 "Friday, note down meeting at 3pm"</div><div>✅ "Friday, add task buy groceries"</div><div>🔔 "Friday, remind me in 2 hours to call mom"</div><div>📋 "Friday, show my tasks"</div><div>🔍 "Friday, search notes about project"</div></div></div>';
 }
 
 // ─── DB Actions ───
-async function addNote(content,source) {
-  var text = content || document.getElementById('ni').value.trim();
-  if(!text) return;
-  await db.notes.add({content:text, source:source||'text', createdAt:new Date()});
-  if(!content && document.getElementById('ni')) document.getElementById('ni').value='';
-  render();
-}
-async function delNote(id) { await db.notes.delete(id); render(); }
+async function addNote(c,s){var t=c||document.getElementById('ni').value.trim();if(!t)return;await db.notes.add({content:t,source:s||'text',createdAt:new Date()});if(!c&&document.getElementById('ni'))document.getElementById('ni').value='';render();return t}
+async function delNote(id){await db.notes.delete(id);render()}
+async function addTask(ti,pr){var t=ti||document.getElementById('ti').value.trim();if(!t)return;var p=pr||(document.getElementById('tp')?document.getElementById('tp').value:'medium');await db.tasks.add({title:t,status:'pending',priority:p,createdAt:new Date()});if(!ti&&document.getElementById('ti'))document.getElementById('ti').value='';render();return t}
+async function togTask(id){var t=await db.tasks.get(id);if(t)await db.tasks.update(id,{status:t.status==='done'?'pending':'done'});render()}
+async function delTask(id){await db.tasks.delete(id);render()}
+async function addReminder(ti,dt){var t=ti||document.getElementById('ri').value.trim();var d=dt||new Date(document.getElementById('rt').value);if(!t||isNaN(d.getTime()))return;await db.reminders.add({title:t,remindAt:d,isSent:0,createdAt:new Date()});if(!ti&&document.getElementById('ri'))document.getElementById('ri').value='';render();return t}
+async function delReminder(id){await db.reminders.delete(id);render()}
 
-async function addTask(title,pri) {
-  var text = title || document.getElementById('ti').value.trim();
-  if(!text) return;
-  var p = pri || (document.getElementById('tp')?document.getElementById('tp').value:'medium');
-  await db.tasks.add({title:text, status:'pending', priority:p, createdAt:new Date()});
-  if(!title && document.getElementById('ti')) document.getElementById('ti').value='';
-  render();
-}
-async function togTask(id) {
-  var t = await db.tasks.get(id);
-  if(t) await db.tasks.update(id, {status:t.status==='done'?'pending':'done', completedAt:t.status==='done'?null:new Date()});
-  render();
-}
-async function delTask(id) { await db.tasks.delete(id); render(); }
+// ─── Groq LLM + Tool Calling ───
+var TOOLS=[
+  {type:'function',function:{name:'create_note',description:'Save a note or piece of information',parameters:{type:'object',properties:{content:{type:'string',description:'The note content'}},required:['content']}}},
+  {type:'function',function:{name:'create_task',description:'Add a task/todo item',parameters:{type:'object',properties:{title:{type:'string'},priority:{type:'string',enum:['low','medium','high','urgent'],default:'medium'}},required:['title']}}},
+  {type:'function',function:{name:'set_reminder',description:'Set a timed reminder',parameters:{type:'object',properties:{title:{type:'string'},time:{type:'string',description:'Natural language time like "in 2 hours", "tomorrow 9am", "tonight"'}},required:['title','time']}}},
+  {type:'function',function:{name:'list_tasks',description:'Show pending tasks',parameters:{type:'object',properties:{}}}},
+  {type:'function',function:{name:'list_notes',description:'Show recent notes',parameters:{type:'object',properties:{limit:{type:'number',default:5}}}}},
+  {type:'function',function:{name:'search_notes',description:'Search notes by keyword',parameters:{type:'object',properties:{query:{type:'string'}},required:['query']}}},
+  {type:'function',function:{name:'complete_task',description:'Mark a task as done',parameters:{type:'object',properties:{query:{type:'string',description:'Task name or keyword to find it'}},required:['query']}}},
+  {type:'function',function:{name:'list_reminders',description:'Show upcoming reminders',parameters:{type:'object',properties:{}}}}
+];
 
-async function addReminder(title,date) {
-  var text = title || document.getElementById('ri').value.trim();
-  var d = date || new Date(document.getElementById('rt').value);
-  if(!text || isNaN(d.getTime())) return;
-  await db.reminders.add({title:text, remindAt:d, isSent:0, createdAt:new Date()});
-  if(!title && document.getElementById('ri')) document.getElementById('ri').value='';
-  render();
-}
-async function delReminder(id) { await db.reminders.delete(id); render(); }
+var SYSTEM_MSG={role:'system',content:"You are Friday, a personal AI assistant built by Bhavesh. You're sharp, witty, concise, and warm. Speak naturally in 1-2 short sentences — you're being spoken aloud via TTS. No markdown, no bullet points, no emojis. Use tools silently when the conversation implies an action. Don't announce tool usage unless it adds value — just do it and respond naturally. You know Bhavesh is a robotics engineer who values efficiency."};
 
-// ─── Voice Engine ───
-var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-var micOn = false;
-var wakeDetected = false;
-var pendingCmd = '';
+var chatHistory=[];
 
-function toggleMic() {
-  if(micOn) { stopVoice(); return; }
-  micOn = true;
-  wakeDetected = false;
-  pendingCmd = '';
-  document.getElementById('mic').className = 'on';
-  document.getElementById('mic').textContent = '🟢';
-  showOverlay('listening');
-  listenOnce();
-}
+async function callGroq(userMsg){
+  var key=getKey();
+  if(!key)return{reply:"Groq API key set nahi hai. Settings mein ja aur key daal.",toolCalls:[]};
 
-function stopVoice() {
-  micOn = false;
-  wakeDetected = false;
-  document.getElementById('mic').className = '';
-  document.getElementById('mic').textContent = '🎤';
-  hideOverlay();
-}
+  chatHistory.push({role:'user',content:userMsg});
+  if(chatHistory.length>20)chatHistory=chatHistory.slice(-16);
 
-function listenOnce() {
-  if(!SR || !micOn) return;
-  var rec = new SR();
-  rec.continuous = false;
-  rec.interimResults = true;
-  rec.lang = 'en-US';
+  var messages=[SYSTEM_MSG].concat(chatHistory);
+  var body={model:'llama-3.3-70b-versatile',messages:messages,tools:TOOLS,tool_choice:'auto',temperature:0.7,max_tokens:150};
 
-  rec.onresult = function(e) {
-    var text = '', isFinal = false;
-    for(var i=0; i<e.results.length; i++) {
-      text += e.results[i][0].transcript;
-      if(e.results[i].isFinal) isFinal = true;
-    }
-    var lower = text.toLowerCase().trim();
-    document.getElementById('ov-text').textContent = '"'+text+'"';
+  try{
+    var res=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body)});
+    if(!res.ok){var e=await res.text();throw new Error('Groq '+res.status+': '+e)}
+    var data=await res.json();
+    var msg=data.choices[0].message;
 
-    if(!wakeDetected) {
-      if(lower.indexOf('friday') >= 0) {
-        wakeDetected = true;
-        showOverlay('active');
-        var idx = lower.indexOf('friday');
-        var cmd = lower.slice(idx+6).trim();
-        if(cmd.length > 1 && isFinal) { processCommand(cmd); return; }
-        pendingCmd = cmd;
+    // Tool calls handle kar
+    if(msg.tool_calls&&msg.tool_calls.length>0){
+      chatHistory.push(msg);
+      var toolResults=[];
+      for(var i=0;i<msg.tool_calls.length;i++){
+        var tc=msg.tool_calls[i];
+        var args=JSON.parse(tc.function.arguments);
+        var result=await executeTool(tc.function.name,args);
+        toolResults.push({role:'tool',tool_call_id:tc.id,content:JSON.stringify(result)});
       }
-    } else {
-      pendingCmd = lower;
+      chatHistory=chatHistory.concat(toolResults);
+
+      // Second call — tool results ke saath final response lo
+      var messages2=[SYSTEM_MSG].concat(chatHistory);
+      var body2={model:'llama-3.3-70b-versatile',messages:messages2,temperature:0.7,max_tokens:150};
+      var res2=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body2)});
+      var data2=await res2.json();
+      var reply=data2.choices[0].message.content;
+      chatHistory.push({role:'assistant',content:reply});
+      return{reply:reply,toolCalls:msg.tool_calls};
     }
-  };
 
-  rec.onend = function() {
-    if(!micOn) return;
-    if(wakeDetected && pendingCmd.length > 0) { processCommand(pendingCmd); return; }
-    if(wakeDetected) { setTimeout(listenOnce, 300); return; }
-    // No wake — restart with 1s delay
-    setTimeout(listenOnce, 1000);
-  };
-
-  rec.onerror = function(e) {
-    if(e.error==='aborted'||e.error==='no-speech') return;
-    console.error('STT error:', e.error);
-  };
-
-  try { rec.start(); } catch(ex) { if(micOn) setTimeout(listenOnce, 1000); }
-}
-
-// ─── Command Processing ───
-async function processCommand(text) {
-  wakeDetected = false;
-  pendingCmd = '';
-  showOverlay('thinking', text);
-
-  var reply = await brain(text);
-
-  showOverlay('speaking', text, reply);
-  await speak(reply);
-
-  // Resume listening after speaking
-  if(micOn) {
-    showOverlay('listening');
-    document.getElementById('ov-text').textContent = '';
-    setTimeout(listenOnce, 1000);
+    var reply=msg.content;
+    chatHistory.push({role:'assistant',content:reply});
+    return{reply:reply,toolCalls:[]};
+  }catch(err){
+    console.error('Groq error:',err);
+    return{reply:"Error: "+err.message,toolCalls:[]};
   }
 }
 
-// ─── Brain (personality + actions) ───
-async function brain(text) {
-  var lower = text.toLowerCase().trim();
-
-  // Identity
-  if(/who are you|what are you|your name/.test(lower)) return "I'm Friday. Your assistant, running on your phone. No cloud.";
-  if(/who (am i|made you|built you)/.test(lower)) return "You're Bhavesh. You built me.";
-  if(/what can you do|help/.test(lower)) return "Notes, tasks, reminders. Just talk to me.";
-
-  // Greetings
-  if(/^(hey|hi|hello|sup|yo|what's up|whats up)/.test(lower)) {
-    var g = ["Hey. What's up?", "Hey Bhavesh.", "Yo. What do you need?"];
-    return g[Math.floor(Math.random()*g.length)];
-  }
-  if(/thanks|thank you/.test(lower)) return "Anytime.";
-
-  // Notes
-  var noteP = ['note down ','note that ','save note ','write down ','remember that ','note ','jot down '];
-  for(var i=0;i<noteP.length;i++) { if(lower.indexOf(noteP[i])===0) { var c=text.slice(noteP[i].length).trim(); if(c){await addNote(c,'voice'); return 'Noted.';} } }
-
-  // Tasks
-  var taskP = ['add task ','new task ','todo ','task ','create task '];
-  for(var i=0;i<taskP.length;i++) { if(lower.indexOf(taskP[i])===0) { var t=text.slice(taskP[i].length).trim(); if(t){await addTask(t); return 'Added to your tasks.';} } }
-
-  // Reminders
-  if(lower.indexOf('remind me ')===0 || lower.indexOf('remind ')===0 || lower.indexOf('reminder ')===0) {
-    var rt = text.replace(/^remind(er)?\s*(me\s*)?/i,'').trim();
-    var d = parseTime(rt);
-    if(d) { await addReminder(rt, d); return "I'll remind you."; }
-    await addReminder(rt, new Date(Date.now()+3600000));
-    return "Reminder set, 1 hour from now.";
-  }
-
-  // List
-  if(/show|list|my/.test(lower)) {
-    if(/notes?/.test(lower)) { var n=await db.notes.orderBy('createdAt').reverse().limit(5).toArray(); if(!n.length) return "No notes yet."; return n.length+" notes. "+n.slice(0,3).map(function(x){return x.content.slice(0,40)}).join('. '); }
-    if(/tasks?|todos?/.test(lower)) { var t=await db.tasks.where('status').anyOf('pending','in_progress').toArray(); if(!t.length) return "All clear. Nothing pending."; return t.length+" tasks. "+t.slice(0,3).map(function(x){return x.title}).join(', '); }
-    if(/reminders?/.test(lower)) { var r=await db.reminders.where('isSent').equals(0).toArray(); if(!r.length) return "No reminders."; return r.length+" reminders. "+r.slice(0,3).map(function(x){return x.title}).join(', '); }
-  }
-
-  // Search
-  if(/^(search|find)/.test(lower)) {
-    var q = lower.replace(/^(search|find)\s*(for\s*)?(notes?\s*)?(about\s*)?/,'').trim();
-    if(q) { var n=await db.notes.filter(function(x){return x.content.toLowerCase().indexOf(q)>=0}).limit(10).toArray(); if(!n.length) return 'Nothing on "'+q+'".'; return 'Found '+n.length+'. First: '+n[0].content.slice(0,50); }
-  }
-
-  // Complete task
-  if(/done|complete|finish/.test(lower)) {
-    var q = lower.replace(/\b(mark|as|done|complete|completed|finished)\b/g,'').trim();
-    if(q) {
-      var tasks = await db.tasks.where('status').anyOf('pending','in_progress').toArray();
-      var match = tasks.find(function(t){return t.title.toLowerCase().indexOf(q)>=0});
-      if(match) { await db.tasks.update(match.id, {status:'done', completedAt:new Date()}); render(); return 'Done. '+match.title+' is off your list.'; }
-      return "Couldn't find that task.";
+async function executeTool(name,args){
+  switch(name){
+    case'create_note':await addNote(args.content,'voice');render();return{ok:true,message:'Note saved'};
+    case'create_task':await addTask(args.title,args.priority||'medium');render();return{ok:true,message:'Task added'};
+    case'set_reminder':{
+      var d=parseTime(args.time||'');
+      if(!d)d=new Date(Date.now()+3600000);
+      await addReminder(args.title,d);render();
+      return{ok:true,message:'Reminder set for '+d.toLocaleString()};
     }
+    case'list_tasks':{
+      var t=await db.tasks.where('status').anyOf('pending','in_progress').toArray();
+      return{tasks:t.map(function(x){return{title:x.title,priority:x.priority}})};
+    }
+    case'list_notes':{
+      var n=await db.notes.orderBy('createdAt').reverse().limit(args.limit||5).toArray();
+      return{notes:n.map(function(x){return{content:x.content.slice(0,100),created:x.createdAt}})};
+    }
+    case'search_notes':{
+      var q=(args.query||'').toLowerCase();
+      var n=await db.notes.filter(function(x){return x.content.toLowerCase().indexOf(q)>=0}).limit(10).toArray();
+      return{results:n.map(function(x){return x.content.slice(0,100)})};
+    }
+    case'complete_task':{
+      var q=(args.query||'').toLowerCase();
+      var t=await db.tasks.where('status').anyOf('pending','in_progress').toArray();
+      var m=t.find(function(x){return x.title.toLowerCase().indexOf(q)>=0});
+      if(m){await db.tasks.update(m.id,{status:'done'});render();return{ok:true,completed:m.title}}
+      return{ok:false,message:'Task not found'};
+    }
+    case'list_reminders':{
+      var r=await db.reminders.where('isSent').equals(0).toArray();
+      return{reminders:r.map(function(x){return{title:x.title,time:x.remindAt}})};
+    }
+    default:return{error:'Unknown tool'};
   }
-
-  // Fallback — save as note
-  if(text.length > 10) { await addNote(text,'voice'); return 'Noted that down.'; }
-  return "Didn't catch that. Try again?";
 }
 
-// ─── TTS ───
-function speak(text) {
-  return new Promise(function(resolve) {
-    if(!window.speechSynthesis) { resolve(); return; }
-    var u = new SpeechSynthesisUtterance(text);
-    u.lang = 'en-US';
-    u.rate = 1.05;
-    u.onend = resolve;
-    u.onerror = resolve;
-    speechSynthesis.speak(u);
-    setTimeout(resolve, text.length*80+3000); // Safari fallback
+// ─── Edge TTS ───
+async function edgeTTS(text){
+  return new Promise(function(resolve,reject){
+    var TOKEN='6A5AA1D4EAFF4E9FB37E23D68491D6F4';
+    var voice=getVoice();
+    var id=crypto.randomUUID().replace(/-/g,'');
+    var url='wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken='+TOKEN+'&ConnectionId='+id;
+
+    var ws,chunks=[],resolved=false;
+    try{ws=new WebSocket(url)}catch(e){resolve(fallbackTTS(text));return}
+
+    ws.onopen=function(){
+      ws.send('Content-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n{"context":{"synthesis":{"audio":{"metadataoptions":{"sentenceBoundaryEnabled":"false","wordBoundaryEnabled":"false"},"outputFormat":"audio-24khz-48kbitrate-mono-mp3"}}}}');
+      var ssml='<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US"><voice name="'+voice+'">'+escXml(text)+'</voice></speak>';
+      ws.send('X-RequestId:'+id+'\r\nContent-Type:application/ssml+xml\r\nPath:ssml\r\n\r\n'+ssml);
+    };
+
+    ws.onmessage=function(e){
+      if(typeof e.data==='string'){
+        if(e.data.indexOf('Path:turn.end')>=0&&!resolved){resolved=true;ws.close();playAudio(chunks).then(resolve)}
+      }else{
+        // Binary — audio data, skip header
+        e.data.arrayBuffer().then(function(buf){
+          var arr=new Uint8Array(buf);
+          var headerEnd=findHeaderEnd(arr);
+          if(headerEnd>0)chunks.push(arr.slice(headerEnd));
+        });
+      }
+    };
+
+    ws.onerror=function(){if(!resolved){resolved=true;fallbackTTS(text).then(resolve)}};
+    ws.onclose=function(){if(!resolved){resolved=true;if(chunks.length)playAudio(chunks).then(resolve);else fallbackTTS(text).then(resolve)}};
+
+    setTimeout(function(){if(!resolved){resolved=true;ws.close();fallbackTTS(text).then(resolve)}},10000);
   });
 }
 
-// ─── Overlay ───
-function showOverlay(state, text, resp) {
-  var o = document.getElementById('overlay'); o.className='on';
-  var cfg = {
-    listening: {s:'Listening...', h:'Say "Friday" to start'},
-    active: {s:'Go ahead...', h:'Listening for command'},
-    thinking: {s:'Thinking...', h:'Processing'},
-    speaking: {s:'Friday', h:''}
-  };
-  var c = cfg[state]||cfg.listening;
-  document.getElementById('ov-status').textContent = c.s;
-  document.getElementById('ov-hint').textContent = c.h;
-  if(text) document.getElementById('ov-text').textContent = '"'+text+'"';
-  if(resp) document.getElementById('ov-resp').textContent = resp;
+function findHeaderEnd(arr){
+  // Edge TTS binary: "Path:audio\r\n" header then audio data
+  for(var i=0;i<arr.length-3;i++){
+    if(arr[i]===0x0D&&arr[i+1]===0x0A&&arr[i+2]===0x0D&&arr[i+3]===0x0A)return i+4;
+  }
+  // Alternative: 2-byte length prefix header
+  if(arr.length>2){var hlen=(arr[0]<<8)|arr[1];if(hlen<arr.length)return hlen+2}
+  return 0;
 }
-function hideOverlay() { document.getElementById('overlay').className=''; document.getElementById('ov-text').textContent=''; document.getElementById('ov-resp').textContent=''; }
+
+function playAudio(chunks){
+  return new Promise(function(resolve){
+    if(!chunks.length){resolve();return}
+    var blob=new Blob(chunks,{type:'audio/mp3'});
+    var audio=new Audio(URL.createObjectURL(blob));
+    audio.onended=resolve;
+    audio.onerror=resolve;
+    audio.play().catch(function(){resolve()});
+    setTimeout(resolve,15000);
+  });
+}
+
+function fallbackTTS(text){
+  return new Promise(function(resolve){
+    if(!window.speechSynthesis){resolve();return}
+    var u=new SpeechSynthesisUtterance(text);
+    u.lang='en-US';u.rate=1.05;
+    u.onend=resolve;u.onerror=resolve;
+    speechSynthesis.speak(u);
+    setTimeout(resolve,text.length*80+3000);
+  });
+}
+
+function escXml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+// ─── Voice Engine (STT) ───
+var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+var micOn=false,wakeDetected=false,pendingCmd='';
+
+function toggleMic(){
+  if(micOn){stopVoice();return}
+  if(!getKey()){alert('Pehle Settings mein Groq API key daal.');showTab('settings');return}
+  micOn=true;wakeDetected=false;pendingCmd='';
+  document.getElementById('mic').className='on';document.getElementById('mic').textContent='🟢';
+  showOv('listening');
+  listenOnce();
+}
+function stopVoice(){
+  micOn=false;wakeDetected=false;
+  document.getElementById('mic').className='';document.getElementById('mic').textContent='🎤';
+  hideOv();
+}
+function listenOnce(){
+  if(!SR||!micOn)return;
+  var rec=new SR();rec.continuous=false;rec.interimResults=true;rec.lang='en-US';
+  rec.onresult=function(e){
+    var text='',fin=false;
+    for(var i=0;i<e.results.length;i++){text+=e.results[i][0].transcript;if(e.results[i].isFinal)fin=true}
+    var lower=text.toLowerCase().trim();
+    document.getElementById('ov-text').textContent='"'+text+'"';
+    if(!wakeDetected){
+      if(lower.indexOf('friday')>=0){
+        wakeDetected=true;showOv('active');
+        var cmd=lower.slice(lower.indexOf('friday')+6).trim();
+        if(cmd.length>1&&fin){processCmd(cmd);return}
+        pendingCmd=cmd;
+      }
+    }else{pendingCmd=lower}
+  };
+  rec.onend=function(){
+    if(!micOn)return;
+    if(wakeDetected&&pendingCmd.length>0){processCmd(pendingCmd);return}
+    if(wakeDetected){setTimeout(listenOnce,300);return}
+    setTimeout(listenOnce,1000);
+  };
+  rec.onerror=function(e){if(e.error!=='aborted'&&e.error!=='no-speech')console.error('STT:',e.error)};
+  try{rec.start()}catch(ex){if(micOn)setTimeout(listenOnce,1000)}
+}
+
+// ─── Command Pipeline ───
+async function processCmd(text){
+  wakeDetected=false;pendingCmd='';
+  showOv('thinking',text);
+  addBubble('user',text);
+
+  var result=await callGroq(text);
+  var reply=result.reply||"Couldn't process that.";
+
+  addBubble('fri',reply);
+  showOv('speaking',null,reply);
+  await edgeTTS(reply);
+
+  render();
+  if(micOn){showOv('listening');document.getElementById('ov-text').textContent='';setTimeout(listenOnce,1000)}
+}
+
+// ─── Overlay ───
+function showOv(state,text,resp){
+  var o=document.getElementById('ov');o.className='on'+(state?' '+state:'');
+  var cfg={listening:{s:'Listening...',h:'Say "Friday" to start'},active:{s:'Go ahead...',h:''},thinking:{s:'Thinking...',h:''},speaking:{s:'Friday',h:''}};
+  var c=cfg[state]||cfg.listening;
+  document.getElementById('ov-status').textContent=c.s;
+  document.getElementById('ov-hint').textContent=c.h;
+  if(text)document.getElementById('ov-text').textContent='"'+text+'"';
+  if(resp)document.getElementById('ov-resp').textContent=resp;
+}
+function hideOv(){document.getElementById('ov').className='';document.getElementById('ov-text').textContent='';document.getElementById('ov-resp').textContent='';document.getElementById('ov-chat').innerHTML=''}
+function addBubble(who,text){
+  var chat=document.getElementById('ov-chat');
+  var d=document.createElement('div');d.className='bubble '+who;d.textContent=text;
+  chat.appendChild(d);chat.scrollTop=chat.scrollHeight;
+}
 
 // ─── Helpers ───
-function esc(s) { var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
-function ago(d) { var m=Math.floor((Date.now()-new Date(d).getTime())/60000); if(m<1)return 'now'; if(m<60)return m+'m'; var h=Math.floor(m/60); if(h<24)return h+'h'; return Math.floor(h/24)+'d'; }
-function relTime(d) { var diff=new Date(d).getTime()-Date.now(); var m=Math.round(Math.abs(diff)/60000); var past=diff<0; if(m<60)return(past?m+'m ago':'in '+m+'m'); var h=Math.round(m/60); if(h<24)return(past?h+'h ago':'in '+h+'h'); return(past?Math.round(h/24)+'d ago':'in '+Math.round(h/24)+'d'); }
-function defTime() { return new Date(Date.now()+3600000).toISOString().slice(0,16); }
-function parseTime(t) {
+function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function ago(d){var m=Math.floor((Date.now()-new Date(d).getTime())/60000);if(m<1)return'now';if(m<60)return m+'m';var h=Math.floor(m/60);if(h<24)return h+'h';return Math.floor(h/24)+'d'}
+function relTime(d){var diff=new Date(d).getTime()-Date.now(),m=Math.round(Math.abs(diff)/60000),p=diff<0;if(m<60)return p?m+'m ago':'in '+m+'m';var h=Math.round(m/60);if(h<24)return p?h+'h ago':'in '+h+'h';return p?Math.round(h/24)+'d ago':'in '+Math.round(h/24)+'d'}
+function defTime(){return new Date(Date.now()+3600000).toISOString().slice(0,16)}
+function parseTime(t){
   var l=t.toLowerCase();
   var m=l.match(/(?:in\s+)?(\d+)\s*(min|hour|hr|day|week)/);
-  if(m){var ms={min:60000,hour:3600000,hr:3600000,day:86400000,week:604800000}; return new Date(Date.now()+parseInt(m[1])*ms[m[2]]);}
-  if(/half\s*(an?\s*)?hour/.test(l)) return new Date(Date.now()+1800000);
-  if(/tomorrow/.test(l)){var d=new Date();d.setDate(d.getDate()+1);d.setHours(9,0,0,0);return d;}
-  if(/tonight|this evening/.test(l)){var d=new Date();d.setHours(20,0,0,0);return d;}
+  if(m){var ms={min:60000,hour:3600000,hr:3600000,day:86400000,week:604800000};return new Date(Date.now()+parseInt(m[1])*ms[m[2]])}
+  if(/half\s*(an?\s*)?hour/.test(l))return new Date(Date.now()+1800000);
+  if(/tomorrow/.test(l)){var d=new Date();d.setDate(d.getDate()+1);d.setHours(9,0,0,0);return d}
+  if(/tonight|this evening/.test(l)){var d=new Date();d.setHours(20,0,0,0);return d}
   return null;
 }
 
