@@ -445,6 +445,9 @@ function parseTime(t){
   return null;
 }
 
+// ─── Auto-set key from URL hash ───
+(function(){var h=location.hash;if(h.indexOf('#key=')===0){var k=h.slice(5);setKey(k);location.hash='';location.reload()}})();
+
 // ─── Init ───
 render();
 </script>
