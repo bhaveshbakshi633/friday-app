@@ -1,105 +1,410 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
-  <meta name="theme-color" content="#1a1a2e" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Friday" />
-  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#1a1a2e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <title>Friday</title>
-  <script type="module" crossorigin src="/friday-app/assets/index-Baniv1IO.js"></script>
-  <link rel="stylesheet" crossorigin href="/friday-app/assets/index-DhrsYrVr.css">
+  <script src="https://unpkg.com/dexie@4.0.11/dist/dexie.min.js"></script>
+  <style>
+    :root { --bg:#1a1a2e; --card:#16213e; --accent:#4361ee; --green:#06d6a0; --red:#ef476f; --text:#e0e0e0; --dim:#8892a4; --muted:#4a5568; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:-apple-system,system-ui,sans-serif; background:var(--bg); color:var(--text); height:100dvh; overflow:hidden; -webkit-user-select:none; }
+    #app { display:flex; flex-direction:column; height:100dvh; }
+
+    /* Tabs */
+    #tabs { display:flex; position:fixed; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid rgba(255,255,255,.05); padding-bottom:env(safe-area-inset-bottom); z-index:50; }
+    .tab { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 0; background:none; border:none; color:var(--muted); font-size:10px; cursor:pointer; }
+    .tab.on { color:var(--accent); }
+
+    /* Content */
+    #content { flex:1; overflow-y:auto; padding:16px 16px 90px; -webkit-overflow-scrolling:touch; }
+    .page { display:none; } .page.on { display:block; }
+    h1 { font-size:28px; font-weight:700; margin-bottom:16px; }
+
+    /* Cards */
+    .card { background:var(--card); border-radius:12px; padding:14px 16px; margin-bottom:10px; }
+    .meta { font-size:12px; color:var(--dim); margin-top:6px; display:flex; gap:8px; align-items:center; }
+    .empty { text-align:center; padding:60px 20px; color:var(--dim); }
+
+    /* Input bar */
+    .bar { display:flex; gap:8px; margin-bottom:16px; }
+    .bar input,.bar select { flex:1; padding:12px; background:#0f3460; border:1px solid rgba(255,255,255,.1); border-radius:12px; color:var(--text); font-size:15px; outline:none; }
+    .bar button { padding:12px 20px; background:var(--accent); color:#fff; border:none; border-radius:12px; font-size:15px; font-weight:600; cursor:pointer; }
+
+    /* Task row */
+    .trow { display:flex; align-items:center; gap:12px; }
+    .tcheck { width:24px; height:24px; border-radius:50%; border:2px solid var(--muted); background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--bg); font-size:14px; }
+    .tcheck.done { border-color:var(--green); background:var(--green); }
+    .done-text { text-decoration:line-through; color:var(--dim); }
+
+    /* Delete btn */
+    .del { background:none; border:none; cursor:pointer; font-size:14px; margin-left:auto; }
+
+    /* Setting rows */
+    .sgroup { background:var(--card); border-radius:12px; margin-bottom:16px; }
+    .srow { display:flex; justify-content:space-between; padding:14px 16px; font-size:15px; }
+    .srow+.srow { border-top:1px solid rgba(255,255,255,.05); }
+    .sval { color:var(--dim); font-size:14px; }
+    .slabel { font-size:13px; font-weight:600; color:var(--dim); padding:8px 16px 4px; }
+
+    /* Mic button */
+    #mic { position:fixed; bottom:calc(70px + env(safe-area-inset-bottom)); right:20px; width:56px; height:56px; border-radius:50%; background:var(--accent); border:none; color:#fff; cursor:pointer; z-index:60; box-shadow:0 4px 20px rgba(67,97,238,.3); display:flex; align-items:center; justify-content:center; font-size:24px; }
+    #mic.on { background:var(--green); animation:pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{box-shadow:0 4px 20px rgba(6,214,160,.3)} 50%{box-shadow:0 4px 40px rgba(6,214,160,.6)} }
+
+    /* Overlay */
+    #overlay { position:fixed; inset:0; z-index:100; display:none; }
+    #overlay.on { display:flex; }
+    #overlay .bg { position:absolute; inset:0; background:rgba(10,10,20,.92); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); }
+    #overlay .inner { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; padding:40px 24px; text-align:center; gap:20px; }
+    #ov-status { font-size:22px; font-weight:600; }
+    #ov-orb { width:120px; height:120px; border-radius:50%; background:radial-gradient(circle,var(--accent),#7209b7); opacity:.7; animation:breathe 2s ease-in-out infinite; }
+    @keyframes breathe { 0%,100%{transform:scale(1);opacity:.7} 50%{transform:scale(1.08);opacity:.9} }
+    #ov-text { font-size:16px; min-height:24px; opacity:.9; max-width:80%; }
+    #ov-resp { font-size:14px; color:var(--dim); min-height:20px; max-width:80%; }
+    #ov-hint { font-size:12px; color:var(--muted); }
+    #ov-stop { width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.1); border:none; color:var(--dim); font-size:18px; cursor:pointer; margin-top:20px; }
+  </style>
 </head>
 <body>
-  <div id="app">
-    <!-- Tab navigation -->
-    <nav id="tabs">
-      <button class="tab active" data-tab="notes">
-        <span class="tab-icon">📝</span>
-        <span class="tab-label">Notes</span>
-      </button>
-      <button class="tab" data-tab="tasks">
-        <span class="tab-icon">✅</span>
-        <span class="tab-label">Tasks</span>
-      </button>
-      <button class="tab" data-tab="reminders">
-        <span class="tab-icon">🔔</span>
-        <span class="tab-label">Reminders</span>
-      </button>
-      <button class="tab" data-tab="settings">
-        <span class="tab-icon">⚙️</span>
-        <span class="tab-label">Settings</span>
-      </button>
-    </nav>
+<div id="app">
+  <nav id="tabs">
+    <button class="tab on" onclick="showTab('notes')">📝<span>Notes</span></button>
+    <button class="tab" onclick="showTab('tasks')">✅<span>Tasks</span></button>
+    <button class="tab" onclick="showTab('reminders')">🔔<span>Reminders</span></button>
+    <button class="tab" onclick="showTab('settings')">⚙️<span>Settings</span></button>
+  </nav>
 
-    <!-- Tab content -->
-    <main id="content">
-      <section id="view-notes" class="view active">
-        <h1 class="view-header">Notes</h1>
-        <p style="color:#8892a4">Loading...</p>
-      </section>
-      <section id="view-tasks" class="view"></section>
-      <section id="view-reminders" class="view"></section>
-      <section id="view-settings" class="view"></section>
-    </main>
+  <main id="content">
+    <div id="p-notes" class="page on"></div>
+    <div id="p-tasks" class="page"></div>
+    <div id="p-reminders" class="page"></div>
+    <div id="p-settings" class="page"></div>
+  </main>
 
-    <!-- Floating mic button -->
-    <button id="mic-btn" aria-label="Voice assistant">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-        <line x1="12" y1="19" x2="12" y2="23"/>
-        <line x1="8" y1="23" x2="16" y2="23"/>
-      </svg>
-    </button>
+  <button id="mic" onclick="toggleMic()">🎤</button>
 
-    <!-- Voice overlay -->
-    <div id="voice-overlay" class="hidden">
-      <div class="overlay-bg"></div>
-      <div class="overlay-content">
-        <p id="voice-status">Listening...</p>
-        <div id="orb">
-          <div class="orb-ring"></div>
-          <div class="orb-core"></div>
-          <div class="orb-icon">🎤</div>
-        </div>
-        <p id="voice-transcript"></p>
-        <p id="voice-response"></p>
-        <button id="voice-stop">✕</button>
-        <p id="voice-hint">Say "Friday" to start</p>
-      </div>
-    </div>
-
-    <!-- Model download modal -->
-    <div id="model-modal" class="modal hidden">
-      <div class="modal-content">
-        <h2>🧠 AI Model Setup</h2>
-        <p>Friday ko commands samajhne ke liye ek on-device model chahiye.</p>
-        <div id="model-options"></div>
-        <div id="model-progress" class="hidden">
-          <div class="progress-bar"><div class="progress-fill"></div></div>
-          <p id="model-progress-text">Downloading...</p>
-        </div>
-        <button id="model-skip" class="btn-secondary">Skip (regex-only mode)</button>
-      </div>
+  <div id="overlay">
+    <div class="bg"></div>
+    <div class="inner">
+      <p id="ov-status">Listening...</p>
+      <div id="ov-orb"></div>
+      <p id="ov-text"></p>
+      <p id="ov-resp"></p>
+      <p id="ov-hint">Say "Friday" to start</p>
+      <button id="ov-stop" onclick="stopVoice()">✕</button>
     </div>
   </div>
+</div>
 
-  <script>
-    // Nuke ALL service workers + caches — no more stale versions
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(regs) {
-        regs.forEach(function(r) { r.unregister(); });
-      });
-      if (window.caches) {
-        caches.keys().then(function(keys) {
-          keys.forEach(function(k) { caches.delete(k); });
-        });
-      }
+<script>
+// ─── Nuke old SW ───
+if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(r=>r.forEach(x=>x.unregister()));if(window.caches)caches.keys().then(k=>k.forEach(x=>caches.delete(x)))}
+
+// ─── DB ───
+var db = new Dexie('friday');
+db.version(1).stores({ notes:'++id,createdAt', tasks:'++id,status,createdAt', reminders:'++id,remindAt,isSent' });
+
+// ─── Tabs ───
+var currentTab = 'notes';
+function showTab(t) {
+  currentTab = t;
+  document.querySelectorAll('.tab').forEach(function(b,i){b.className='tab'+((['notes','tasks','reminders','settings'][i]===t)?' on':'')});
+  document.querySelectorAll('.page').forEach(function(p){p.className='page'});
+  document.getElementById('p-'+t).className='page on';
+  render();
+}
+
+// ─── Render ───
+async function render() {
+  if(currentTab==='notes') await renderNotes();
+  if(currentTab==='tasks') await renderTasks();
+  if(currentTab==='reminders') await renderReminders();
+  if(currentTab==='settings') renderSettings();
+}
+
+async function renderNotes() {
+  var notes = await db.notes.orderBy('createdAt').reverse().limit(50).toArray();
+  var el = document.getElementById('p-notes');
+  var h = '<h1>Notes</h1><div class="bar"><input id="ni" placeholder="Quick note..."><button onclick="addNote()">+</button></div>';
+  if(!notes.length) h += '<div class="empty">📝<br><b>No Notes Yet</b><br>Say "Friday, note down..." or type above</div>';
+  notes.forEach(function(n){
+    h += '<div class="card"><div>'+esc(n.content)+'</div><div class="meta"><span>'+(n.source==='voice'?'🎤':'📝')+'</span><span>'+ago(n.createdAt)+'</span><button class="del" onclick="delNote('+n.id+')">🗑️</button></div></div>';
+  });
+  el.innerHTML = h;
+}
+
+async function renderTasks() {
+  var tasks = await db.tasks.where('status').anyOf('pending','in_progress').reverse().sortBy('createdAt');
+  var done = await db.tasks.where('status').equals('done').reverse().sortBy('createdAt');
+  var el = document.getElementById('p-tasks');
+  var h = '<h1>Tasks</h1><div class="bar"><input id="ti" placeholder="New task..."><select id="tp"><option value="medium">Med</option><option value="low">Low</option><option value="high">High</option><option value="urgent">🔴</option></select><button onclick="addTask()">+</button></div>';
+  if(!tasks.length&&!done.length) h += '<div class="empty">✅<br><b>No Tasks</b><br>Say "Friday, add task..." or type above</div>';
+  tasks.forEach(function(t){ h += taskCard(t); });
+  if(done.length) { h += '<details style="margin-top:16px"><summary style="color:var(--dim);cursor:pointer">Done ('+done.length+')</summary>'; done.slice(0,10).forEach(function(t){ h += taskCard(t); }); h += '</details>'; }
+  el.innerHTML = h;
+}
+
+function taskCard(t) {
+  var d = t.status==='done';
+  var dots = {low:'🟢',medium:'🟡',high:'🟠',urgent:'🔴'};
+  return '<div class="card"><div class="trow"><button class="tcheck'+(d?' done':'')+'" onclick="togTask('+t.id+')">'+(d?'✓':'')+'</button><div><div class="'+(d?'done-text':'')+'">'+esc(t.title)+'</div><div class="meta">'+(dots[t.priority]||'')+'<span>'+t.priority+'</span></div></div><button class="del" onclick="delTask('+t.id+')">🗑️</button></div></div>';
+}
+
+async function renderReminders() {
+  var now = new Date();
+  var rems = await db.reminders.where('isSent').equals(0).sortBy('remindAt');
+  var el = document.getElementById('p-reminders');
+  var h = '<h1>Reminders</h1><div class="bar"><input id="ri" placeholder="Remind me to..."><input id="rt" type="datetime-local" value="'+defTime()+'"><button onclick="addReminder()">+</button></div>';
+  if(!rems.length) h += '<div class="empty">🔔<br><b>No Reminders</b><br>Say "Friday, remind me..." or add above</div>';
+  rems.forEach(function(r){
+    var over = new Date(r.remindAt) <= now;
+    h += '<div class="card"><div>'+esc(r.title)+'</div><div class="meta"><span style="color:'+(over?'var(--red)':'var(--dim)')+'">🔔 '+relTime(r.remindAt)+'</span><button class="del" onclick="delReminder('+r.id+')">🗑️</button></div></div>';
+  });
+  el.innerHTML = h;
+}
+
+function renderSettings() {
+  document.getElementById('p-settings').innerHTML = '<h1>Settings</h1><p class="slabel">VOICE</p><div class="sgroup"><div class="srow"><span>Wake Word</span><span class="sval">"Friday"</span></div><div class="srow"><span>STT</span><span class="sval">On-device</span></div><div class="srow"><span>TTS</span><span class="sval">On-device</span></div><div class="srow"><span>Storage</span><span class="sval">On-device (IndexedDB)</span></div></div><p class="slabel">COMMANDS</p><div class="sgroup"><div class="srow" style="flex-direction:column;gap:8px;font-size:13px;color:var(--dim)"><div>📝 "Friday, note down meeting at 3pm"</div><div>✅ "Friday, add task buy groceries"</div><div>🔔 "Friday, remind me in 2 hours to call mom"</div><div>📋 "Friday, show my tasks"</div><div>🔍 "Friday, search notes about project"</div></div></div>';
+}
+
+// ─── DB Actions ───
+async function addNote(content,source) {
+  var text = content || document.getElementById('ni').value.trim();
+  if(!text) return;
+  await db.notes.add({content:text, source:source||'text', createdAt:new Date()});
+  if(!content && document.getElementById('ni')) document.getElementById('ni').value='';
+  render();
+}
+async function delNote(id) { await db.notes.delete(id); render(); }
+
+async function addTask(title,pri) {
+  var text = title || document.getElementById('ti').value.trim();
+  if(!text) return;
+  var p = pri || (document.getElementById('tp')?document.getElementById('tp').value:'medium');
+  await db.tasks.add({title:text, status:'pending', priority:p, createdAt:new Date()});
+  if(!title && document.getElementById('ti')) document.getElementById('ti').value='';
+  render();
+}
+async function togTask(id) {
+  var t = await db.tasks.get(id);
+  if(t) await db.tasks.update(id, {status:t.status==='done'?'pending':'done', completedAt:t.status==='done'?null:new Date()});
+  render();
+}
+async function delTask(id) { await db.tasks.delete(id); render(); }
+
+async function addReminder(title,date) {
+  var text = title || document.getElementById('ri').value.trim();
+  var d = date || new Date(document.getElementById('rt').value);
+  if(!text || isNaN(d.getTime())) return;
+  await db.reminders.add({title:text, remindAt:d, isSent:0, createdAt:new Date()});
+  if(!title && document.getElementById('ri')) document.getElementById('ri').value='';
+  render();
+}
+async function delReminder(id) { await db.reminders.delete(id); render(); }
+
+// ─── Voice Engine ───
+var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+var micOn = false;
+var wakeDetected = false;
+var pendingCmd = '';
+
+function toggleMic() {
+  if(micOn) { stopVoice(); return; }
+  micOn = true;
+  wakeDetected = false;
+  pendingCmd = '';
+  document.getElementById('mic').className = 'on';
+  document.getElementById('mic').textContent = '🟢';
+  showOverlay('listening');
+  listenOnce();
+}
+
+function stopVoice() {
+  micOn = false;
+  wakeDetected = false;
+  document.getElementById('mic').className = '';
+  document.getElementById('mic').textContent = '🎤';
+  hideOverlay();
+}
+
+function listenOnce() {
+  if(!SR || !micOn) return;
+  var rec = new SR();
+  rec.continuous = false;
+  rec.interimResults = true;
+  rec.lang = 'en-US';
+
+  rec.onresult = function(e) {
+    var text = '', isFinal = false;
+    for(var i=0; i<e.results.length; i++) {
+      text += e.results[i][0].transcript;
+      if(e.results[i].isFinal) isFinal = true;
     }
-  </script>
+    var lower = text.toLowerCase().trim();
+    document.getElementById('ov-text').textContent = '"'+text+'"';
+
+    if(!wakeDetected) {
+      if(lower.indexOf('friday') >= 0) {
+        wakeDetected = true;
+        showOverlay('active');
+        var idx = lower.indexOf('friday');
+        var cmd = lower.slice(idx+6).trim();
+        if(cmd.length > 1 && isFinal) { processCommand(cmd); return; }
+        pendingCmd = cmd;
+      }
+    } else {
+      pendingCmd = lower;
+    }
+  };
+
+  rec.onend = function() {
+    if(!micOn) return;
+    if(wakeDetected && pendingCmd.length > 0) { processCommand(pendingCmd); return; }
+    if(wakeDetected) { setTimeout(listenOnce, 300); return; }
+    // No wake — restart with 1s delay
+    setTimeout(listenOnce, 1000);
+  };
+
+  rec.onerror = function(e) {
+    if(e.error==='aborted'||e.error==='no-speech') return;
+    console.error('STT error:', e.error);
+  };
+
+  try { rec.start(); } catch(ex) { if(micOn) setTimeout(listenOnce, 1000); }
+}
+
+// ─── Command Processing ───
+async function processCommand(text) {
+  wakeDetected = false;
+  pendingCmd = '';
+  showOverlay('thinking', text);
+
+  var reply = await brain(text);
+
+  showOverlay('speaking', text, reply);
+  await speak(reply);
+
+  // Resume listening after speaking
+  if(micOn) {
+    showOverlay('listening');
+    document.getElementById('ov-text').textContent = '';
+    setTimeout(listenOnce, 1000);
+  }
+}
+
+// ─── Brain (personality + actions) ───
+async function brain(text) {
+  var lower = text.toLowerCase().trim();
+
+  // Identity
+  if(/who are you|what are you|your name/.test(lower)) return "I'm Friday. Your assistant, running on your phone. No cloud.";
+  if(/who (am i|made you|built you)/.test(lower)) return "You're Bhavesh. You built me.";
+  if(/what can you do|help/.test(lower)) return "Notes, tasks, reminders. Just talk to me.";
+
+  // Greetings
+  if(/^(hey|hi|hello|sup|yo|what's up|whats up)/.test(lower)) {
+    var g = ["Hey. What's up?", "Hey Bhavesh.", "Yo. What do you need?"];
+    return g[Math.floor(Math.random()*g.length)];
+  }
+  if(/thanks|thank you/.test(lower)) return "Anytime.";
+
+  // Notes
+  var noteP = ['note down ','note that ','save note ','write down ','remember that ','note ','jot down '];
+  for(var i=0;i<noteP.length;i++) { if(lower.indexOf(noteP[i])===0) { var c=text.slice(noteP[i].length).trim(); if(c){await addNote(c,'voice'); return 'Noted.';} } }
+
+  // Tasks
+  var taskP = ['add task ','new task ','todo ','task ','create task '];
+  for(var i=0;i<taskP.length;i++) { if(lower.indexOf(taskP[i])===0) { var t=text.slice(taskP[i].length).trim(); if(t){await addTask(t); return 'Added to your tasks.';} } }
+
+  // Reminders
+  if(lower.indexOf('remind me ')===0 || lower.indexOf('remind ')===0 || lower.indexOf('reminder ')===0) {
+    var rt = text.replace(/^remind(er)?\s*(me\s*)?/i,'').trim();
+    var d = parseTime(rt);
+    if(d) { await addReminder(rt, d); return "I'll remind you."; }
+    await addReminder(rt, new Date(Date.now()+3600000));
+    return "Reminder set, 1 hour from now.";
+  }
+
+  // List
+  if(/show|list|my/.test(lower)) {
+    if(/notes?/.test(lower)) { var n=await db.notes.orderBy('createdAt').reverse().limit(5).toArray(); if(!n.length) return "No notes yet."; return n.length+" notes. "+n.slice(0,3).map(function(x){return x.content.slice(0,40)}).join('. '); }
+    if(/tasks?|todos?/.test(lower)) { var t=await db.tasks.where('status').anyOf('pending','in_progress').toArray(); if(!t.length) return "All clear. Nothing pending."; return t.length+" tasks. "+t.slice(0,3).map(function(x){return x.title}).join(', '); }
+    if(/reminders?/.test(lower)) { var r=await db.reminders.where('isSent').equals(0).toArray(); if(!r.length) return "No reminders."; return r.length+" reminders. "+r.slice(0,3).map(function(x){return x.title}).join(', '); }
+  }
+
+  // Search
+  if(/^(search|find)/.test(lower)) {
+    var q = lower.replace(/^(search|find)\s*(for\s*)?(notes?\s*)?(about\s*)?/,'').trim();
+    if(q) { var n=await db.notes.filter(function(x){return x.content.toLowerCase().indexOf(q)>=0}).limit(10).toArray(); if(!n.length) return 'Nothing on "'+q+'".'; return 'Found '+n.length+'. First: '+n[0].content.slice(0,50); }
+  }
+
+  // Complete task
+  if(/done|complete|finish/.test(lower)) {
+    var q = lower.replace(/\b(mark|as|done|complete|completed|finished)\b/g,'').trim();
+    if(q) {
+      var tasks = await db.tasks.where('status').anyOf('pending','in_progress').toArray();
+      var match = tasks.find(function(t){return t.title.toLowerCase().indexOf(q)>=0});
+      if(match) { await db.tasks.update(match.id, {status:'done', completedAt:new Date()}); render(); return 'Done. '+match.title+' is off your list.'; }
+      return "Couldn't find that task.";
+    }
+  }
+
+  // Fallback — save as note
+  if(text.length > 10) { await addNote(text,'voice'); return 'Noted that down.'; }
+  return "Didn't catch that. Try again?";
+}
+
+// ─── TTS ───
+function speak(text) {
+  return new Promise(function(resolve) {
+    if(!window.speechSynthesis) { resolve(); return; }
+    var u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US';
+    u.rate = 1.05;
+    u.onend = resolve;
+    u.onerror = resolve;
+    speechSynthesis.speak(u);
+    setTimeout(resolve, text.length*80+3000); // Safari fallback
+  });
+}
+
+// ─── Overlay ───
+function showOverlay(state, text, resp) {
+  var o = document.getElementById('overlay'); o.className='on';
+  var cfg = {
+    listening: {s:'Listening...', h:'Say "Friday" to start'},
+    active: {s:'Go ahead...', h:'Listening for command'},
+    thinking: {s:'Thinking...', h:'Processing'},
+    speaking: {s:'Friday', h:''}
+  };
+  var c = cfg[state]||cfg.listening;
+  document.getElementById('ov-status').textContent = c.s;
+  document.getElementById('ov-hint').textContent = c.h;
+  if(text) document.getElementById('ov-text').textContent = '"'+text+'"';
+  if(resp) document.getElementById('ov-resp').textContent = resp;
+}
+function hideOverlay() { document.getElementById('overlay').className=''; document.getElementById('ov-text').textContent=''; document.getElementById('ov-resp').textContent=''; }
+
+// ─── Helpers ───
+function esc(s) { var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function ago(d) { var m=Math.floor((Date.now()-new Date(d).getTime())/60000); if(m<1)return 'now'; if(m<60)return m+'m'; var h=Math.floor(m/60); if(h<24)return h+'h'; return Math.floor(h/24)+'d'; }
+function relTime(d) { var diff=new Date(d).getTime()-Date.now(); var m=Math.round(Math.abs(diff)/60000); var past=diff<0; if(m<60)return(past?m+'m ago':'in '+m+'m'); var h=Math.round(m/60); if(h<24)return(past?h+'h ago':'in '+h+'h'); return(past?Math.round(h/24)+'d ago':'in '+Math.round(h/24)+'d'); }
+function defTime() { return new Date(Date.now()+3600000).toISOString().slice(0,16); }
+function parseTime(t) {
+  var l=t.toLowerCase();
+  var m=l.match(/(?:in\s+)?(\d+)\s*(min|hour|hr|day|week)/);
+  if(m){var ms={min:60000,hour:3600000,hr:3600000,day:86400000,week:604800000}; return new Date(Date.now()+parseInt(m[1])*ms[m[2]]);}
+  if(/half\s*(an?\s*)?hour/.test(l)) return new Date(Date.now()+1800000);
+  if(/tomorrow/.test(l)){var d=new Date();d.setDate(d.getDate()+1);d.setHours(9,0,0,0);return d;}
+  if(/tonight|this evening/.test(l)){var d=new Date();d.setHours(20,0,0,0);return d;}
+  return null;
+}
+
+// ─── Init ───
+render();
+</script>
 </body>
 </html>
