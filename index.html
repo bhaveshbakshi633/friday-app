@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#1a1a2e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Friday" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <title>Friday</title>
+  <script type="module" crossorigin src="/assets/index-DOV-tZuI.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DhrsYrVr.css">
+<link rel="manifest" href="/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/registerSW.js"></script></head>
+<body>
+  <div id="app">
+    <!-- Tab navigation -->
+    <nav id="tabs">
+      <button class="tab active" data-tab="notes">
+        <span class="tab-icon">📝</span>
+        <span class="tab-label">Notes</span>
+      </button>
+      <button class="tab" data-tab="tasks">
+        <span class="tab-icon">✅</span>
+        <span class="tab-label">Tasks</span>
+      </button>
+      <button class="tab" data-tab="reminders">
+        <span class="tab-icon">🔔</span>
+        <span class="tab-label">Reminders</span>
+      </button>
+      <button class="tab" data-tab="settings">
+        <span class="tab-icon">⚙️</span>
+        <span class="tab-label">Settings</span>
+      </button>
+    </nav>
+
+    <!-- Tab content -->
+    <main id="content">
+      <section id="view-notes" class="view active">
+        <h1 class="view-header">Notes</h1>
+        <p style="color:#8892a4">Loading...</p>
+      </section>
+      <section id="view-tasks" class="view"></section>
+      <section id="view-reminders" class="view"></section>
+      <section id="view-settings" class="view"></section>
+    </main>
+
+    <!-- Floating mic button -->
+    <button id="mic-btn" aria-label="Voice assistant">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+        <line x1="12" y1="19" x2="12" y2="23"/>
+        <line x1="8" y1="23" x2="16" y2="23"/>
+      </svg>
+    </button>
+
+    <!-- Voice overlay -->
+    <div id="voice-overlay" class="hidden">
+      <div class="overlay-bg"></div>
+      <div class="overlay-content">
+        <p id="voice-status">Listening...</p>
+        <div id="orb">
+          <div class="orb-ring"></div>
+          <div class="orb-core"></div>
+          <div class="orb-icon">🎤</div>
+        </div>
+        <p id="voice-transcript"></p>
+        <p id="voice-response"></p>
+        <button id="voice-stop">✕</button>
+        <p id="voice-hint">Say "Friday" to start</p>
+      </div>
+    </div>
+
+    <!-- Model download modal -->
+    <div id="model-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2>🧠 AI Model Setup</h2>
+        <p>Friday ko commands samajhne ke liye ek on-device model chahiye.</p>
+        <div id="model-options"></div>
+        <div id="model-progress" class="hidden">
+          <div class="progress-bar"><div class="progress-fill"></div></div>
+          <p id="model-progress-text">Downloading...</p>
+        </div>
+        <button id="model-skip" class="btn-secondary">Skip (regex-only mode)</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
