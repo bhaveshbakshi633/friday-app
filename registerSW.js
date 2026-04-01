@@ -1,1 +1,0 @@
-if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/friday-app/sw.js', { scope: '/friday-app/' })})}

@@ -1,136 +1,105 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Friday — Speech Test</title>
-  <style>
-    body { font-family: system-ui; background: #1a1a2e; color: #fff; padding: 20px; }
-    #log { white-space: pre-wrap; font-size: 13px; margin-top: 16px; background: #000; padding: 12px; border-radius: 8px; min-height: 300px; max-height: 60vh; overflow-y: auto; }
-    button { padding: 14px 28px; font-size: 16px; border-radius: 12px; border: none; margin: 4px; cursor: pointer; }
-    #start { background: #4361ee; color: #fff; }
-    #stop { background: #ef476f; color: #fff; }
-    select { padding: 10px; font-size: 14px; border-radius: 8px; background: #16213e; color: #fff; border: 1px solid #333; }
-    .heard { color: #0f0; }
-    .wake { color: #ff0; font-weight: bold; }
-    .info { color: #888; }
-    .error { color: #f66; }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#1a1a2e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Friday" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <title>Friday</title>
+  <script type="module" crossorigin src="/friday-app/assets/index-Baniv1IO.js"></script>
+  <link rel="stylesheet" crossorigin href="/friday-app/assets/index-DhrsYrVr.css">
 </head>
 <body>
-  <h2>🎤 Speech Test v2</h2>
-  <div>
-    <select id="lang">
-      <option value="en-US">en-US</option>
-      <option value="en-IN">en-IN</option>
-      <option value="en-GB">en-GB</option>
-      <option value="en">en</option>
-    </select>
-    <button id="start">▶ Start</button>
-    <button id="stop">⏹ Stop</button>
+  <div id="app">
+    <!-- Tab navigation -->
+    <nav id="tabs">
+      <button class="tab active" data-tab="notes">
+        <span class="tab-icon">📝</span>
+        <span class="tab-label">Notes</span>
+      </button>
+      <button class="tab" data-tab="tasks">
+        <span class="tab-icon">✅</span>
+        <span class="tab-label">Tasks</span>
+      </button>
+      <button class="tab" data-tab="reminders">
+        <span class="tab-icon">🔔</span>
+        <span class="tab-label">Reminders</span>
+      </button>
+      <button class="tab" data-tab="settings">
+        <span class="tab-icon">⚙️</span>
+        <span class="tab-label">Settings</span>
+      </button>
+    </nav>
+
+    <!-- Tab content -->
+    <main id="content">
+      <section id="view-notes" class="view active">
+        <h1 class="view-header">Notes</h1>
+        <p style="color:#8892a4">Loading...</p>
+      </section>
+      <section id="view-tasks" class="view"></section>
+      <section id="view-reminders" class="view"></section>
+      <section id="view-settings" class="view"></section>
+    </main>
+
+    <!-- Floating mic button -->
+    <button id="mic-btn" aria-label="Voice assistant">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+        <line x1="12" y1="19" x2="12" y2="23"/>
+        <line x1="8" y1="23" x2="16" y2="23"/>
+      </svg>
+    </button>
+
+    <!-- Voice overlay -->
+    <div id="voice-overlay" class="hidden">
+      <div class="overlay-bg"></div>
+      <div class="overlay-content">
+        <p id="voice-status">Listening...</p>
+        <div id="orb">
+          <div class="orb-ring"></div>
+          <div class="orb-core"></div>
+          <div class="orb-icon">🎤</div>
+        </div>
+        <p id="voice-transcript"></p>
+        <p id="voice-response"></p>
+        <button id="voice-stop">✕</button>
+        <p id="voice-hint">Say "Friday" to start</p>
+      </div>
+    </div>
+
+    <!-- Model download modal -->
+    <div id="model-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2>🧠 AI Model Setup</h2>
+        <p>Friday ko commands samajhne ke liye ek on-device model chahiye.</p>
+        <div id="model-options"></div>
+        <div id="model-progress" class="hidden">
+          <div class="progress-bar"><div class="progress-fill"></div></div>
+          <p id="model-progress-text">Downloading...</p>
+        </div>
+        <button id="model-skip" class="btn-secondary">Skip (regex-only mode)</button>
+      </div>
+    </div>
   </div>
-  <div id="log"></div>
 
   <script>
-    // Nuke old service workers + cache
+    // Nuke ALL service workers + caches — no more stale versions
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(regs) {
         regs.forEach(function(r) { r.unregister(); });
       });
-      caches.keys().then(function(keys) {
-        keys.forEach(function(k) { caches.delete(k); });
-      });
-    }
-
-    var log = document.getElementById('log');
-    var langSelect = document.getElementById('lang');
-    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    function addLog(msg, cls) {
-      var line = document.createElement('div');
-      line.className = cls || '';
-      line.textContent = new Date().toLocaleTimeString() + ' ' + msg;
-      log.prepend(line);
-    }
-
-    if (!SR) {
-      addLog('SpeechRecognition NOT SUPPORTED', 'error');
-    } else {
-      addLog('Ready. Pick language, tap Start, say "Friday hello"', 'info');
-    }
-
-    var running = false;
-    var sessionNum = 0;
-    var busy = false;
-
-    function listen() {
-      if (!SR || !running || busy) return;
-      busy = true;
-
-      var rec = new SR();
-      rec.continuous = false;
-      rec.interimResults = true;
-      rec.lang = langSelect.value;
-
-      rec.onstart = function() {
-        sessionNum++;
-        busy = false;
-        addLog('#' + sessionNum + ' listening [' + langSelect.value + ']', 'info');
-      };
-
-      rec.onresult = function(event) {
-        for (var i = event.resultIndex; i < event.results.length; i++) {
-          var text = event.results[i][0].transcript;
-          var isFinal = event.results[i].isFinal;
-          var lower = text.toLowerCase();
-          var hasFriday = lower.indexOf('friday') >= 0;
-
-          if (hasFriday) {
-            addLog((isFinal ? 'FINAL' : '...') + ': "' + text + '" 🎯 FRIDAY!', 'wake');
-          } else {
-            addLog((isFinal ? 'FINAL' : '...') + ': "' + text + '"', 'heard');
-          }
-        }
-      };
-
-      rec.onend = function() {
-        addLog('#' + sessionNum + ' ended', 'info');
-        busy = false;
-        // 500ms gap — Safari cleanup time
-        if (running) setTimeout(listen, 500);
-      };
-
-      rec.onerror = function(e) {
-        busy = false;
-        if (e.error === 'aborted') return; // onend handles restart
-        if (e.error === 'no-speech') {
-          addLog('silence, retrying...', 'info');
-          return;
-        }
-        addLog('error: ' + e.error, 'error');
-      };
-
-      try {
-        rec.start();
-      } catch(e) {
-        addLog('start fail: ' + e.message, 'error');
-        busy = false;
-        if (running) setTimeout(listen, 1000);
+      if (window.caches) {
+        caches.keys().then(function(keys) {
+          keys.forEach(function(k) { caches.delete(k); });
+        });
       }
     }
-
-    document.getElementById('start').onclick = function() {
-      running = true;
-      sessionNum = 0;
-      busy = false;
-      addLog('=== STARTED ===', 'info');
-      listen();
-    };
-
-    document.getElementById('stop').onclick = function() {
-      running = false;
-      addLog('=== STOPPED ===', 'info');
-    };
   </script>
 </body>
 </html>
